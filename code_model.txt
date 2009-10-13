@@ -1,0 +1,26 @@
+Problems with and AST vs. a Code Model
+
+Using an AST involves much more work from a client perspective.
+AST provide different results base on the node factory.
+Changes in the AST have to be respected at all points where the AST is used.
+An AST is syntax tree at it's lowest level.
+Adding query/manipulation features to the AST interface bulks the interface and object size.
+The AST involves many indirections to get to the actual node.
+The AST cannot communicate with the editor because it's part of the compiler.
+
+Code Model:
+
+* This is not to be a complete code model, the AST will still be used for the actual code.
+* This is not the same code model as present in Visual Studio
+* This model is specific to Eiffel and will be simplier than any generic model from any vendor.
+
+Simplifed model that abstracts the AST so it can be modified without affecting clients.
+Uses it's own node factories and visitors to guarentee consistent results.
+Used in mulitlpe places so any underlying changes are immediate to the tools using it.
+Better design, not having a class perform two distinct purposes.
+Can be extended to support better editor integration; updating line/column positions without a reparse, can be reparsed in a background thread, provide support for code folding, editor breakpoint validation, completion, ...
+Clean interfaces that do not care or expose irrelevant AST nodes.
+Better support for modifying code and adding features.
+Can be extended simply for an intellisense database (future thought) providing live completion or code information without the need to compile.
+Could be used by graphical code generation tools to generate code and refeed modified code back into the UI.
+Think of this model as a parsed code report and not a model of code.

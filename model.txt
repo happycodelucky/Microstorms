@@ -1,0 +1,118 @@
+CODE_CLASS_MODIFIER
+	none
+	deferred
+	frozen
+	expanded
+	external
+	
+CODE_INDEXING_VALUE_TYPE
+	default
+	string
+	special_word
+	msil
+
+CODE_INDEXING_ONCE_MODE
+	default
+	thread
+	process
+	
+CODE_FACTORY_I
+	new_file: CODE_FILE_I
+	
+CODE_FILE_FACTORY_I
+	new_id (a_name): CODE_CLASS_ID_I
+	new_id (a_name): CODE_FEATURE_ID_I
+	new_text_id (a_name): CODE_TEXT_ID_I
+	new_once_indexing_term (a_name: CODE_TEXT_ID_I, mode: CODE_INDEXING_ONCE_MODE): CODE_INDEXING_TERM_I
+	
+CODE_DOTNET_FACTORY_I
+	new_property_indexing_term (a_value): CODE_INDEXING_TERM_I
+	--new_msil_indexing_term (a_name, a_create_expression, a_properties: LIST [TUPLE])
+	
+CODE_SPAN
+	start_line
+	start_index
+	end_line
+	end_index
+	
+	
+CODE_ID_I
+	id: STRING
+	set_id (a_id: STRING)
+	change_events: EVENT_TYPE
+	
+CODE_ELEMENT_I
+	data: ANY
+	name: CODE_ID -- keyword when not a class of 
+	set_data
+	data_change_events: EVENT_TYPE
+	code_span: CODE_SPAN
+	
+CODE_INDEXING_TERM_I
+	name: STRING
+	value: STRING
+	value_type: CODE_INDEXING_VALUE_TYPE
+	
+CODE_INDEXING_I
+	add_indexing_term (a_name, a_value)
+	add_indexing_term (a_index_term: CODE_INDEXING_TERM_I)
+	remove_indexing_term (a_index_term)
+	added_events: EVENT_TYPE
+	removed_events: EVENT_TYPE
+	
+CODE_OBSOLETE_I
+	is_obsolete: BOOLEAN
+	obsolete_message: BOOLEAN
+	set_is_obsolete (a_message: STRING) -- Void or remove
+	
+CODE_FILE_I: CODE_INDEXING_I
+	class: CODE_CLASS_I
+	group: CODE_GROUP_I
+	code_factory: CODE_FACTORY_I
+
+CODE_INDEXING_TERM_I
+	name: STRING
+	value: CODE_EXPRESSION_I
+	
+CODE_CLASS_I: CODE_OBSOLETE_I, CODE_INDEXING_I
+	modifer: CODE_CLASS_MODIFIER
+	name: STRING
+	parents: DS_LIST [CODE_PARENT_I]
+	parents_of_convience: DS_LIST [CODE_PARENT_I]
+	creation_routines: DS_LIST [CODE_CREATION_ROUTINE_I]
+	conversion_routines: DS_LIST [CODE_CONVERSION_ROUTINE_I]
+	feature_clauses: DS_LIST [CODE_FEATURE_CLAUSE_I]
+	invariant_clause: CODE_INVARIANT_CLAUSE_I
+	
+	set_name
+	
+	add_parent (a_parent, for_convience)
+	remove_parent (a_parent)
+	
+	add_creation_routine (a_routine)
+	remove_creation_routine (a_routine)
+	
+	add_conversion_routine (a_routine)
+	remove_conversion_routine (a_routine)
+	
+	
+CODE_CREATION_ROUTINE_I
+	name
+	export_status: CODE_EXPORT_STATUS_I
+	
+CODE_CONVERSION_ROUTINE_I
+	name
+	type
+	convert_directory: CODE_CONVERSION_DIRECTION
+	export_status: CODE_EXPORT_STATUS_I
+
+CODE_FEATURE_CLAUSE_I
+	label: STRING
+	features: DS_LIST [CODE_FEATURE_I]
+	add_feature
+	remove_feature
+	feature_added_event
+	feature_removed_event
+	
+	
+	

@@ -1,0 +1,163 @@
+Microstorms runtime structure:
+
+==Enabling new objects==
+
+The compile really needs to be able to allocate objects and deallocate them when not in use.
+Given the NXT firmware/runtime does not really support dynamic data allocation, expect when for
+arrays, the runtime is going to need to maintain an array for each cluster type declared. The
+runtime functions used to allocate and relinquish allocated memory will have to make use of 
+arrays.
+
+===Being Smart===
+Dynamic allocation space is limited to 32KB, which is a tight resource. As such the compiler is
+going to have to be smart about which types it creates heap-arrays for. The language should exhibit
+a specific construct to create a new instance of a type. Upon detection of an instruction that will
+exists in the final NXT binary, the compiler should establish a heap-array for use.
+
+===Dealing with Fragmentation===
+Allocation and relinquishing of an allocated slot, used by a type instance, will causes heap
+fragmentation.
+
+For instance, take an type <code>T</code>; Code entities <code>a</code>, <code>b</code> and
+<code>c</code> being of type <code>T</code>
+
+<code>
+...
+
+a, b, c: T
+...
+
+// Allocate's instance of T.
+a = new T();
+b = new T();
+c = new T();
+...
+
+// Releases allocated object b.
+release b;
+</code>
+
+In the above pseudo code, <code>b</code> is released. <code>a</code>,<code>b</code> and <code>c</code> are all allocated sequentially in the order they are created. In a system with no prior allocations, <code>a</code> is placed in slot 1 of <code>T</code>'s heap-array, <code>b</code> in slot 2 and <code>c</code> in slot 3. Relinquishing <code>b</code> frees up slot 2, which should then some how compact the heap-array to decrease the NXT memory used by the program.
+
+====Heap-Array Compacting Options====
+There are multiple solutions to compacting the heap-array, with performance/memory trade offs.
+
+Option 1: Maintain a reuse array
+Option 2: Compact array using a element swap and a object header index
+Option 3: Maintain a resuse array and compact on exceeding a free slot threashold.
+
+There is a prolem with arrays. They use a dope vector containing a next index, which looks like a linked list. In this case there is no option needed to preserve memory. However the fetching an object from a heap will be very slow because the NXT runtime wil have traverse the array to reach a index point.
+
+
+Global
+    00: heap: HEAP (TC_CLUSTER)
+    01: > TC_ULONG
+    02: > TC_USHORT
+    03: > TC_ULONG
+   
+    04: heaps: ARRAY [HEAP] (TC_ARRAY)
+    05: > TC_CLUSTER
+    06: >> TC_ULONG
+    07: >> TC_USHORT
+    08: >> TC_ULONG
+   
+    09: heaps_flipped: ARRAY [HEAP] (TC_ARRAY)
+    10: > TC_CLUSTER
+    11: >> TC_ULONG
+    12: >> TC_USHORT
+    13: >> TC_ULONG
+   
+    14: heap_record: NATURAL_32 (may not need as it's in HEAP)
+    14: heap_old_record: NATURAL_32 (may not need as it's in HEAP)
+   
+    15: heap_count: NATURAL_32
+    16: type_record: NATURAL_32 (Type object holder)
+   
+    17: constant_1 (TC_USHORT) = 1
+   
+HEAP (9 bytes)
+    record: NATURAL_32
+    flipped: NATURAL_8
+    next_slot: NATURAL_32
+   
+OBJECT (4 bytes)
+    type_id: NATURAL_32 (same as heap DSTOC record address)
+    heap_index: NATURAL_32 (index in heap array)
+    ... expanded with type declaration attributes
+   
+TYPE <=> NATURAL_32
+   
+--------
+
+heap_initial_size = 3 (initial heap array length)
+heap_expansion_delta = 5 (heap expansion delta, when heap array need expanding)
+
+// type_record will be set after call.
+// Note: Not thread-safe.
+alloc (type: TYPE)
+	OP_SUBCALL lock_heap												; Aquire a lock for the heap
+    OP_INDEX heap, heaps, type                                            ; Fetch heap element
+    OP_MOV heap_record, heap.record                                       ; Get heap address
+    OP_ADD heap_record, heap_record, heap.flipped                         ; Apply flipped heap record offset
+   
+    OP_ARRSIZE heap_count, heap_record
+    OP_JMP label#2
+   
+#1: // Expand flipped heap
+    OP_MOV heap_old_record, heap_record                                 ; Store old heap record address
+    OP_ADD heap_count, heap_count, heap_expansion_delta                 ; Expand heap count
+    OP_NOT heap.flipped, heap.flipped                                   ; Flip array
+    OP_MOV heap_record, heap.record                                     ; Get new heap record address
+    OP_ADD heap_record, heap_record, heap.flipped                       ; Apply flipped heap record offset
+    OP_ARRINIT heap_record, type_record, heap_count                     ; Create new array (store in flipped heap)
+    OP_ARRSUBSET heap_record, heap_old_record, NOT_A_DS_ID, NOT_A_DS_ID ; Copy old heap to new heap
+   
+#2: // Heaps are optimized to swap last deleted element with last array element.
+    OP_BRCMP label#1, heap_count, heap.next_slot                        ; Ensure heap is big enough
+    OP_SUBCALL	// Call init on type_record
+    OP_REPLACE heap_record, heap_record, heap.next_slot, type_record	; Add type to heap
+    OP_ADD heap.next_slot, constant_1									; Increment next slot
+    
+    OP_SUBCAL unlock_heap												; Release lock on heap
+    OP_SUBRET                                                            ; Exit routine 
+    
+// Release an allocated object
+release (obj: OBJECT)
+	OP_SUBCALL lock_heap										; Aquire a lock on heap variables
+	
+	OP_SUBCALL unlock_heap										; Release lock on heap variables
+	OP_SUBRET													; Return
+	
+// Compacts heap to save on allocated memory
+// Compaction will reduce the size of the heap array by heap_expansion_delta * 2 as it's not worth
+// a reduction when hitting heap_expansion_delta free slots because the next allocation will have
+// to expand the heap array again.
+compact_heap (heap: HEAP)
+	OP_SUBCALL lock_heap										; Aquire a lock on heap variables
+	
+	OP_SUBCALL unlock_heap										; Release lock on heap variables
+	OP_SUBRET													; Return
+	
+// Obtains a lock for accessing the heap
+lock_heap
+	OP_AQUIRE heap
+	OP_AQUIRE heaps
+	OP_AQUIRE heap_record
+	OP_AQUIRE heap_old_record
+	OP_AQUIRE heap_counter
+	OP_AQUIRE type
+	OP_SUBRET
+
+// Releases a lock for accessing the heap
+unlock_heap
+	OP_RELEASE heap
+	OP_RELEASE heaps
+	OP_RELEASE heap_record
+	OP_RELEASE heap_old_record
+	OP_RELEASE heap_counter
+	OP_RELEASE type
+	OP_SUBRET
+
+
+
+

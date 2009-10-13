@@ -1,0 +1,107 @@
+module com.microstorms.runtime
+
+// Type identifier
+type alias uint16 as Type; 
+
+/// <doc>
+/// Fetch a type reference of an active object.
+///
+/// obj: Active object to retrieve type reference for.
+/// result: A type reference.
+/// </doc>
+internal Type TypeOf (object obj)
+	// built in
+end
+
+/// <doc>
+/// Allocates an object on the heap
+internal object Alloc (int typeId)
+end
+
+internal none Release (ref object obj)
+	TypeHeap (typeof (
+	obj = none
+end
+
+/// <doc>
+/// Locates a type's heap array.
+///
+/// typeId: A type identifier
+/// result: A type heap for the supplied type id.
+/// </doc>
+internal object[] TypeHeap (int typeId)
+end
+
+end // module
+
+
+
+
+
+
+
+import com.microstorms.runtime as rt;
+import com.microstorms.display;
+
+module com.microstorms.console
+
+// Module attributes
+private bool m_flag;
+// Acessible via module.m_str
+public string m_str;
+
+// Initializes new module
+public void init
+
+end
+
+public property bool Flag
+set
+	m_flag = Value;
+get
+	Result := m_flag;
+end
+
+end // module
+
+type MyType
+
+public none Init
+end
+
+// All attributes are accessible
+bool BooleanAttribute
+
+end // type
+
+
+
+
+
+module com.microstorms.file
+
+// Shorthand type declaration
+type alias int Handle;
+
+type enum FileTypeEnum: string
+	Executable = "RXE",
+	Data = "RXF",
+	Sound = "RXS"
+end
+
+type FileArgs
+	public none Init (string filename, FileTypeEnum filetype)
+		FileName = filename;
+		FileTypeEnum = filetype;
+	end
+	
+	public string FileName;
+	public FileTypeEnum FileType
+end
+
+public void init
+end
+
+public fhandle Open (string filename)
+
+end // module

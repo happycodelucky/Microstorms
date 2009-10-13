@@ -1,0 +1,70 @@
+Global
+	00: heap: HEAP (TC_CLUSTER)
+	01: > TC_ULONG
+	02: > TC_USHORT
+	03: > TC_ULONG
+	
+	04: heaps: ARRAY [HEAP] (TC_ARRAY)
+	05: > TC_CLUSTER
+	06: >> TC_ULONG
+	07: >> TC_USHORT
+	08: >> TC_ULONG
+	
+	09: heaps_flipped: ARRAY [HEAP] (TC_ARRAY)
+	10: > TC_CLUSTER
+	11: >> TC_ULONG
+	12: >> TC_USHORT
+	13: >> TC_ULONG
+	
+	14: heap_record: NATURAL_32 (may not need as it's in HEAP)
+	14: heap_old_record: NATURAL_32 (may not need as it's in HEAP)
+	
+	15: heap_count: NATURAL_32
+	16: type_record: NATURAL_32 (Type object holder)
+	
+	17: constant_1 (TC_USHORT) = 1
+	
+HEAP (9 bytes)
+	record: NATURAL_32
+	flipped: NATURAL_8
+	next_slot: NATURAL_32
+	
+OBJECT (4 bytes)
+	type_id: NATURAL_32 (same as heap DSTOC record address)
+	... expanded with type declaration attributes
+	
+TYPE <=> NATURAL_32 
+	
+--------
+
+heap_initial_size = 3 (initial heap array length)
+heap_expansion_delta = 5 (heap expansion delta, when heap array need expanding)
+
+// type_record will be set after call.
+// Note: Not thread-safe.
+alloc (type: TYPE)
+	OP_INDEX heap, heaps, type                    						; Fetch heap element
+	OP_MOV heap_record, heap.record               						; Get heap address
+	OP_ADD heap_record, heap_record, heap.flipped 						; Apply flipped heap record offset
+	
+	OP_ARRSIZE heap_count, heap_record
+	OP_JMP #2
+	
+#1: // Expand flipped heap
+	OP_MOV heap_old_record, heap_record                 				; Store old heap record address
+	OP_ADD heap_count, heap_count, heap_expansion_delta 				; Expand heap count
+	OP_NOT heap.flipped, heap.flipped                   				; Flip array
+	OP_MOV heap_record, heap.record                     				; Get new heap record address
+	OP_ADD heap_record, heap_record, heap.flipped       				; Apply flipped heap record offset
+	OP_ARRINIT heap_record, type_record, heap_count						; Create new array (store in flipped heap)
+	OP_ARRSUBSET heap_record, heap_old_record, NOT_A_DS_ID, NOT_A_DS_ID ; Copy old heap to new heap
+	
+#2: // Heaps are optimized to swap last deleted element with last array element.
+	OP_BRCMP label#1, heap_count, heap.next_slot						; Ensure heap is big enough
+	OP_SUBCALL 															// Call init on type_record
+	OP_REPLACE heap_record, heap_record, heap.next_slot, type_record 	; Add type to heap
+	OP_ADD heap.next_slot, constant_1									; Increment next slot
+	OP_SUBRET															; Exit routine
+
+
+	

@@ -1,0 +1,114 @@
+module:
+	com.microstorms.core
+	
+type FILE {
+
+protected:
+	// Type initialization
+	NONE init {
+		...
+	}
+	
+	// Type static initialization
+	NONE single init {
+		...
+	}
+
+}
+
+interface DISPOSE_I
+end; // interface DISPOSE_I
+
+
+end; // type FILE
+
+end; // module
+
+
+
+
+module:
+	com.demo.main alias main
+	
+import:
+	com.microstorms.thread as thread,
+	com.microstorms.file as file
+
+threads:
+	main,
+	thread_loop
+	
+public:
+	/// Main thread access point
+	none main
+		_loop = thread.spawn (thread_loop);
+		thread.join;
+		
+	end; // main
+	
+	
+	none thread_loop
+	
+	end; // thread loop
+	
+private:
+	_threads: THREADS[];
+	_main: THREAD
+	_loop: THREAD
+	
+end; // module
+
+type THREAD
+
+public:
+	THREAD fork (r: ROUTINE) {
+	}
+	
+	NONE abort (t: THREAD) bytecode {
+	}
+	
+private:
+	_mutex: MUTEX
+	
+end; // type
+
+
+
+module com.microstorms.file
+
+private:
+
+	mutex: MUTEX
+
+end; // module
+
+final type Int32
+	
+	public static operator "+" (left, right: Int32): Int32
+		bytecode
+			ADD $Int32.m_acc, $left, $right
+		end
+	
+private
+	m_int32: INT32;
+	static m_acc: INT32;
+end;
+
+final type Mutex
+public:
+	
+	lock
+		bytecode
+			AQUIRE $m_mutex
+		end
+	
+	unlock
+		bytecode
+			RELEASE $m_mutex
+		end
+
+private:
+		
+	m_mutex: MUTEX // Mutex
+		
+end; // type
